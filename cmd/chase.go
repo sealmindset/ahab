@@ -92,6 +92,7 @@ var chaseCmd = &cobra.Command{
 	Example: `
 	dpkg-query --show --showformat='${Package} ${Version}\n' | ./ahab chase --os debian
 	yum list installed | ./ahab chase --os fedora
+	dnf list installed | ./ahab chase --os fedora
 	apk info -vv | sort | ./ahab chase --os alpine
 	`,
 	SilenceErrors: true,
@@ -147,7 +148,7 @@ var chaseCmd = &cobra.Command{
 			panic(err)
 		}
 
-		logLady.Trace("Attempting to extract purls from Project List")
+		logLady.WithField("os", operating).Trace("Attempting to extract purls from Project List")
 		purls := pkgs.ExtractPurlsFromProjectList(operating)
 
 		logLady.Trace("Attempting to Audit Packages with OSS Index")
@@ -213,6 +214,18 @@ func parseStdInList(list []string, operating *string) (packages.IPackage, error)
 			"project_list": apkResult.ProjectList,
 		}).Trace("Obtained apk project list")
 		return apkResult, nil
+	case "fedora":
+		logLady.WithFields(logrus.Fields{
+			"list": list,
+		}).Trace("Chasing Fedora")
+
+		var dnfResult packages.Yum
+		dnfResult.ProjectList = parse.ParseYumListFromStdIn(list)
+
+		logLady.WithFields(logrus.Fields{
+			"project_list": dnfResult.ProjectList,
+		}).Trace("Obtained dnf project list")
+		return dnfResult, nil
 	default:
 		logLady.WithFields(logrus.Fields{
 			"list": list,
